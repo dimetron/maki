@@ -850,6 +850,11 @@ impl App {
 
         self.retry_info = None;
 
+        // Advance spinner verb after each thinking event
+        if matches!(envelope.event, AgentEvent::ThinkingDelta { .. }) {
+            self.status_bar.advance_spinner_verb();
+        }
+
         let plan_path = if self.state.mode == Mode::Plan {
             self.state.plan.path()
         } else {

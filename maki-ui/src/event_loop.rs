@@ -241,6 +241,7 @@ impl<'t> EventLoop<'t> {
         self.app.poll_image_paste();
         self.app.btw_modal.poll();
         self.app.status_bar.poll_branch_update();
+        self.app.status_bar.tick_spinner();
     }
 
     fn drain_channels(&mut self) -> bool {

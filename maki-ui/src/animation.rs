@@ -1,16 +1,16 @@
 use std::mem;
 use std::time::{Duration, Instant};
 
-const SPINNER_FRAMES: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+const SPINNER_CHARS: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const SPINNER_STRS: [&str; 10] = ["⠋ ", "⠙ ", "⠹ ", "⠸ ", "⠼ ", "⠴ ", "⠦ ", "⠧ ", "⠇ ", "⠏ "];
-const SPINNER_FRAME_MS: u128 = 80;
+const SPINNER_FRAME_INTERVAL_MS: u128 = 80;
 
 pub fn spinner_frame(elapsed_ms: u128) -> char {
-    SPINNER_FRAMES[(elapsed_ms / SPINNER_FRAME_MS) as usize % SPINNER_FRAMES.len()]
+    SPINNER_CHARS[(elapsed_ms / SPINNER_FRAME_INTERVAL_MS) as usize % SPINNER_CHARS.len()]
 }
 
 pub fn spinner_str(elapsed_ms: u128) -> &'static str {
-    SPINNER_STRS[(elapsed_ms / SPINNER_FRAME_MS) as usize % SPINNER_STRS.len()]
+    SPINNER_STRS[(elapsed_ms / SPINNER_FRAME_INTERVAL_MS) as usize % SPINNER_STRS.len()]
 }
 
 const DEFAULT_MS_PER_CHAR: u64 = 4;
@@ -140,9 +140,9 @@ mod tests {
     #[test]
     fn spinner_wraps_around() {
         let first = spinner_frame(0);
-        let wrapped = spinner_frame(SPINNER_FRAME_MS * SPINNER_FRAMES.len() as u128);
+        let wrapped = spinner_frame(SPINNER_FRAME_INTERVAL_MS * SPINNER_CHARS.len() as u128);
         assert_eq!(first, wrapped);
-        assert_ne!(first, spinner_frame(SPINNER_FRAME_MS));
+        assert_ne!(first, spinner_frame(SPINNER_FRAME_INTERVAL_MS));
     }
 
     #[test]

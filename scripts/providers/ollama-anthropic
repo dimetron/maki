@@ -12,6 +12,7 @@ https://docs.ollama.com/api/anthropic-compatibility
 import json
 import os
 import sys
+import urllib.request
 
 DEFAULT_HOST = "http://localhost:11434"
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", DEFAULT_HOST)
@@ -38,9 +39,39 @@ def cmd_refresh():
     cmd_resolve()
 
 
+def cmd_models():
+    """Fetch available models from Ollama and return them in maki format."""
+    try:
+        url = f"{OLLAMA_HOST}/api/tags"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+        
+        models = []
+        for model in data.get("models", []):
+            name = model.get("name", "")
+            # Skip cloud/remote-only models that are just stubs (no local data)
+            # These have tiny sizes (~300-400 bytes) vs actual models (billions of bytes)
+            # But allow them if they have a remote_host (cloud models)
+            size = model.get("size", 0)
+            remote_host = model.get("remote_host", "")
+            if size < 1000 and not remote_host:
+                continue
+            # Extract just the model name without tag for cleaner IDs
+            model_id = name
+            models.append({
+                "id": model_id,
+                "tier": "medium",  # Default tier
+            })
+        print(json.dumps(models))
+    except Exception as e:
+        print(f"error fetching models: {e}", file=sys.stderr)
+        print(json.dumps([]))
+        sys.exit(1)
+
+
 def main():
     if len(sys.argv) < 2:
-        print(f"usage: {sys.argv[0]} <info|resolve|refresh>", file=sys.stderr)
+        print(f"usage: {sys.argv[0]} <info|resolve|refresh|models>", file=sys.stderr)
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -48,6 +79,7 @@ def main():
         "info": cmd_info,
         "resolve": cmd_resolve,
         "refresh": cmd_refresh,
+        "models": cmd_models,
     }
 
     fn = commands.get(cmd)

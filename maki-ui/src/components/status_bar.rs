@@ -23,6 +23,75 @@ pub(crate) fn format_tokens(n: u32) -> String {
     }
 }
 
+const SPINNER_VERBS: &[&str] = &[
+	"Accomplishing", "Actioning", "Actualizing", "Architecting",
+	"Augmenting", "Avataring", "Baking", "Beaming",
+	"Beboppin'", "Befuddling", "Billowing", "Bioforging",
+	"Blanching", "Bloviating", "Boogieing", "Boondoggling",
+	"Booping", "Bootstrapping", "Braindancing", "Breaching",
+	"Brewing", "Bunning", "Burrowing", "Calculating",
+	"Canoodling", "Caramelizing", "Cascading", "Catapulting",
+	"Cerebrating", "Channeling", "Chipburning", "Choreographing",
+	"Chroming", "Churning", "Ciphering", "Coalescing",
+	"Cogitating", "Combobulating", "Compiling", "Composing",
+	"Computing", "Concocting", "Considering", "Constructing",
+	"Contemplating", "Cooking", "Coreslicing", "Cowboying",
+	"Crafting", "Creating", "Crunching", "Crystallizing",
+	"Cultivating", "Cyberdecking", "Darkpooling", "Datamining",
+	"Datavaulting", "Deciphering", "Decompiling", "Decrypting",
+	"Deliberating", "Deltasleeping", "Depixelating", "Dermatroding",
+	"Determining", "Dilly-dallying", "Discombobulating", "Dissolving",
+	"Doodling", "Downlinking", "Drifting", "Drizzling",
+	"Ebbing", "Edgerunning", "Effecting", "Electrogliding",
+	"Elucidating", "Embellishing", "Enchanting", "Encrypting",
+	"Envisioning", "Evaporating", "Fermenting", "Fiddle-faddling",
+	"Finagling", "Firewalling", "Flatcoding", "Flowing",
+	"Flummoxing", "Fluttering", "Forging", "Forming",
+	"Fragmenting", "Frolicking", "Frosting", "Gallivanting",
+	"Galloping", "Gargoyleing", "Garnishing", "Generating",
+	"Germinating", "Gesticulating", "Ghosting", "Glitching",
+	"Gridwalking", "Grooving", "Gusting", "Hardwiring",
+	"Harmonizing", "Hashing", "Hatching", "Herding",
+	"Hexdumping", "Hologramming", "Honking", "Hotswapping",
+	"Hullaballooing", "Hyperspacing", "Hyperthreading", "Ideating",
+	"Imagining", "Improvising", "Incubating", "Inferring",
+	"Infusing", "Interfacing", "Ionizing", "Iterating",
+	"Jitterbugging", "Jockeying", "Julienning", "Kernelizing",
+	"Kneading", "Leavening", "Levitating", "Linecooking",
+	"Lollygagging", "Looping", "Manifesting", "Marinating",
+	"Matrixing", "Meandering", "Megafluxing", "Meshing",
+	"Metamorphosing", "Metaversing", "Mirrorshading", "Misting",
+	"Moonwalking", "Morphing", "Moseying", "Mulling",
+	"Mustering", "Musing", "Nanoweaving", "Nebulizing",
+	"Neontracing", "Nesting", "Netrunning", "Neural-linking",
+	"Neuromancing", "Noodling", "Nucleating", "Obfuscating",
+	"Orbiting", "Orchestrating", "Osmosing", "Overclocking",
+	"Overwatching", "Perambulating", "Percolating", "Perusing",
+	"Philosophizing", "Photosynthesizing", "Pixeldrifting", "Pollinating",
+	"Pondering", "Pontificating", "Pouncing", "Precipitating",
+	"Prestidigitating", "Processing", "Proofing", "Propagating",
+	"Puttering", "Puzzling", "Quantumizing", "Razzle-dazzling",
+	"Razzmatazzing", "Recompiling", "Recombobulating", "Reflashing",
+	"Reticulating", "Roosting", "Ruminating", "Sandboxing",
+	"Scampering", "Schlepping", "Scurrying", "Seasoning",
+	"Shadowcasting", "Shenaniganing", "Shimmying", "Simsense-loading",
+	"Simstimming", "Simmering", "Skedaddling", "Sketching",
+	"Slithering", "Smooshing", "Sock-hopping", "Soldering",
+	"Spelunking", "Spinning", "Sprawling", "Sprouting",
+	"Stewing", "Sublimating", "Subroutining", "Swirling",
+	"Swooping", "Symbioting", "Synapse-firing", "Synthwaving",
+	"Synthesizing", "Tempering", "Tessier-ashpooling", "Thinking",
+	"Thundering", "Tinkering", "Tomfoolering", "Topsy-turvying",
+	"Tracing", "Transfiguring", "Transmuting", "Trode-jockeying",
+	"Tunneling", "Twisting", "Undulating", "Unfurling",
+	"Unraveling", "Uplinking", "Vaporwaving", "Vibing",
+	"Voodoo-boying", "Voxelizing", "Waddling", "Wandering",
+	"Warping", "Wetware-syncing", "Whatchamacalliting", "Whirlpooling",
+	"Whirring", "Whisking", "Wibbling", "Wintermuting",
+	"Wireframing", "Working", "Wrangling", "Zesting",
+	"Zigzagging", "Zone-tripping",
+];
+
 pub struct UsageStats<'a> {
     pub usage: &'a TokenUsage,
     pub global_usage: &'a TokenUsage,
@@ -44,22 +113,29 @@ pub struct StatusBarContext<'a> {
     pub thinking_label: Option<Cow<'static, str>>,
 }
 
+const SPINNER_VERB_INTERVAL_MS: u128 = 3_000;
+
 pub struct StatusBar {
     flash: Option<(String, Instant)>,
     started_at: Instant,
     cwd_branch: String,
     pub flash_duration: Duration,
     branch_update_rx: Option<flume::Receiver<()>>,
+    spinner_verb_idx: usize,
+    spinner_verb_at: Instant,
 }
 
 impl StatusBar {
     pub fn new(flash_duration: Duration) -> Self {
+        let now = Instant::now();
         Self {
             flash: None,
-            started_at: Instant::now(),
+            started_at: now,
             cwd_branch: cwd_branch_label(),
             flash_duration,
             branch_update_rx: spawn_branch_watcher(),
+            spinner_verb_idx: (now.elapsed().as_millis() as usize) % SPINNER_VERBS.len(),
+            spinner_verb_at: now,
         }
     }
 
@@ -85,6 +161,20 @@ impl StatusBar {
         }
     }
 
+    pub fn tick_spinner(&mut self) {
+        let elapsed = self.spinner_verb_at.elapsed().as_millis();
+        if elapsed >= SPINNER_VERB_INTERVAL_MS {
+            self.spinner_verb_idx = self.spinner_verb_idx.wrapping_add(1) % SPINNER_VERBS.len();
+            self.spinner_verb_at = Instant::now();
+        }
+    }
+
+    /// Advance the spinner verb immediately (e.g., after a thinking event)
+    pub fn advance_spinner_verb(&mut self) {
+        self.spinner_verb_idx = self.spinner_verb_idx.wrapping_add(1) % SPINNER_VERBS.len();
+        self.spinner_verb_at = Instant::now();
+    }
+
     pub fn clear_flash(&mut self) {
         self.flash = None;
     }
@@ -105,6 +195,8 @@ impl StatusBar {
         if *ctx.status == Status::Streaming {
             let ch = spinner_frame(self.started_at.elapsed().as_millis());
             left_spans.push(Span::styled(format!(" {ch}"), theme::current().spinner));
+            let verb = SPINNER_VERBS[self.spinner_verb_idx % SPINNER_VERBS.len()];
+            left_spans.push(Span::styled(format!(" {verb}"), theme::current().spinner));
         }
 
         left_spans.push(Span::styled(format!(" {}", ctx.mode_label), ctx.mode_style));
